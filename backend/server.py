@@ -5,9 +5,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Optional
 import uuid
+import re
 from datetime import datetime, timezone
 
 
@@ -34,6 +35,14 @@ class LeadCreate(BaseModel):
     role: Optional[str] = None
     interest: str = "maturity_assessment"
 
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid email format')
+        return v
+
 class Lead(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -50,6 +59,14 @@ class ContactCreate(BaseModel):
     company: Optional[str] = None
     message: str
     service_interest: Optional[str] = None
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid email format')
+        return v
 
 class Contact(BaseModel):
     model_config = ConfigDict(extra="ignore")
