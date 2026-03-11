@@ -1,0 +1,119 @@
+{
+  "project_name": "DataManagementEngineer - High Authority Hub",
+  "design_philosophy": {
+    "identity": "The Anti-AI Designer (E1)",
+    "core_principles": [
+      "Fusion over Imitation: Mix Corporate Consultancy with Modern SaaS aesthetics.",
+      "Emotion First: Evoke 'Competence', 'Clarity', and 'Strategic Agility'.",
+      "Content is King: Typography drives the hierarchy. No filler elements.",
+      "Negative Space: 2x standard spacing. Luxury = Space.",
+      "Contrast: High contrast text for readability. Sharp borders vs soft shadows."
+    ],
+    "anti_patterns": [
+      "No purple or teal for CTAs.",
+      "No generic 'Inter' for headings.",
+      "No center-aligned text blocks longer than 3 lines.",
+      "No default Shadcn/Vercel look without customization."
+    ]
+  },
+  "theme": {
+    "mode": "light",
+    "background_strategy": "Tinted White",
+    "colors": {
+      "primary": "#ff6f28",
+      "primary_foreground": "#ffffff",
+      "secondary": "#2274df",
+      "accent": "#ff8200",
+      "background": "#ffffff",
+      "surface": "#f8f9fc",
+      "surface_highlight": "#eff2f7",
+      "text_main": "#0f172a",
+      "text_muted": "#475569",
+      "border": "#e2e8f0",
+      "gradient_brand": "linear-gradient(90deg, #ff8200 0%, #2274df 100%)",
+      "gradient_surface": "linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%)"
+    }
+  },
+  "typography": {
+    "font_family_heading": "Outfit, sans-serif",
+    "font_family_body": "Plus Jakarta Sans, sans-serif",
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tight leading-[1.1]",
+      "h2": "text-4xl md:text-5xl font-semibold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-medium",
+      "body_lg": "text-lg md:text-xl leading-relaxed text-slate-600",
+      "body_base": "text-base leading-relaxed text-slate-600",
+      "label": "text-sm font-semibold uppercase tracking-widest text-slate-500"
+    },
+    "installation": "Imports via Google Fonts in index.css: @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');"
+  },
+  "layout_system": {
+    "container": "max-w-7xl mx-auto px-6 md:px-12",
+    "spacing": {
+      "section_padding": "py-24 md:py-32",
+      "element_gap": "gap-8 md:gap-12"
+    },
+    "grid_strategy": "The Bento Grid (Mode A)",
+    "rules": [
+      "Never center align main marketing copy unless it's a short 3-line statement.",
+      "Use asymmetric columns (e.g., col-span-7 vs col-span-5) for visual tension.",
+      "Add explicit padding to all bordered containers (p-6 or p-8)."
+    ]
+  },
+  "component_styling": {
+    "buttons": {
+      "primary": "bg-[#ff6f28] hover:bg-[#e65a15] text-white rounded-lg px-8 py-6 font-semibold shadow-lg shadow-orange-500/20 transition-all hover:-translate-y-1 hover:shadow-orange-500/30",
+      "secondary": "bg-white border border-slate-200 text-slate-900 hover:bg-slate-50 hover:text-[#2274df] hover:border-[#2274df]/30 rounded-lg px-8 py-6 font-medium transition-all"
+    },
+    "cards": {
+      "base": "bg-white border border-slate-100 rounded-xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 group relative overflow-hidden",
+      "feature": "Must use 'Tracing Beam' effect on hover (border color transition).",
+      "hover_effect": "On hover, reveal a 4px bottom border in brand gradient."
+    },
+    "inputs": {
+      "style": "h-14 bg-slate-50 border-slate-200 focus:border-[#ff6f28] focus:ring-[#ff6f28]/20 rounded-lg text-base"
+    },
+    "badges": {
+      "style": "bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": "https://images.unsplash.com/photo-1748723594319-142e211b46a9?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "about_expert": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "services_abstract": "https://images.unsplash.com/photo-1721444127971-b7d0023bbef2?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "generic_office": "https://images.unsplash.com/photo-1666249245722-0a122db51a00?crop=entropy&cs=srgb&fm=jpg&q=85"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px. Use brand gradient color for key icons."
+    }
+  },
+  "sections_guidelines": {
+    "hero": {
+      "headline": "Large, authoritative. Use 'Data Defense' and 'Data Offense' as key visual anchors.",
+      "layout": "Split screen. Text Left, Abstract Visual Right (masked or floating).",
+      "cta": "Primary Button: 'Get Strategy Assessment'. Secondary: 'View Case Studies'."
+    },
+    "services": {
+      "structure": "Tabs or Split Grid. 'Offense' (Left/Top) vs 'Defense' (Right/Bottom).",
+      "visuals": "Use distinct iconography for each. Shield/Lock for Defense, Rocket/Chart for Offense."
+    },
+    "lead_magnet": {
+      "style": "High value feel. Not a newsletter signup. A 'Professional Tool' download.",
+      "background": "Use the brand gradient as a subtle border or background with low opacity."
+    },
+    "case_studies": {
+      "grid": "Use the Tetris Grid. Mix large highlight cards with smaller list items.",
+      "content": "Focus on metrics: '70% Performance Improvement', '3M+ Users'."
+    }
+  },
+  "universal_rules_for_main_agent": [
+    "DO NOT use generic AI emojis (🚀, 💡) in UI text. Use Lucide icons.",
+    "Ensure all interactive elements have data-testid attributes.",
+    "Use 'sonner' for toast notifications.",
+    "Do not use gradients for full backgrounds. Use them for borders, text, or small accents only.",
+    "Typography: Always use 'tracking-tight' for headings larger than 24px.",
+    "Interactive elements MUST have a visible focus state for accessibility."
+  ]
+}
