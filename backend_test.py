@@ -23,6 +23,10 @@ class DataMeAPITester:
                 response = requests.get(url, headers=headers, timeout=10)
             elif method == 'POST':
                 response = requests.post(url, json=data, headers=headers, timeout=10)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=headers, timeout=10)
+            elif method == 'DELETE':
+                response = requests.delete(url, headers=headers, timeout=10)
             else:
                 print(f"❌ Unsupported method: {method}")
                 return False, {}
@@ -165,6 +169,122 @@ class DataMeAPITester:
             data={"name": "Test", "email": "invalid-email"}
         )
 
+    # Wiki Article API Tests
+    def test_create_wiki_article(self, title, content, excerpt=None, category="General", tags=None, author="DataMe", read_time=None, featured_image_url=None, published=True):
+        """Test creating a wiki article"""
+        data = {
+            "title": title,
+            "content": content,
+            "category": category,
+            "author": author,
+            "published": published
+        }
+        if excerpt:
+            data["excerpt"] = excerpt
+        if tags:
+            data["tags"] = tags
+        if read_time:
+            data["read_time"] = read_time
+        if featured_image_url:
+            data["featured_image_url"] = featured_image_url
+
+        success, response = self.run_test(
+            "Create Wiki Article",
+            "POST",
+            "wiki/articles",
+            200,
+            data=data,
+            expected_fields=["id", "title", "content", "category", "author", "published", "created_at"]
+        )
+        return response.get('id') if success else None
+
+    def test_get_wiki_articles(self, published_only=True, category=None):
+        """Test retrieving wiki articles"""
+        endpoint = "wiki/articles"
+        params = {}
+        if category and category != "All":
+            params["category"] = category
+        if not published_only:
+            params["published_only"] = "false"
+        
+        # Add query params if any
+        if params:
+            param_str = "&".join([f"{k}={v}" for k, v in params.items()])
+            endpoint += f"?{param_str}"
+            
+        success, response = self.run_test(
+            f"Get Wiki Articles (published_only={published_only}, category={category})",
+            "GET",
+            endpoint,
+            200
+        )
+        return success, response
+
+    def test_get_all_wiki_articles(self):
+        """Test retrieving all wiki articles including drafts"""
+        success, response = self.run_test(
+            "Get All Wiki Articles (including drafts)",
+            "GET", 
+            "wiki/articles/all",
+            200
+        )
+        return success, response
+
+    def test_get_wiki_article_by_id(self, article_id):
+        """Test retrieving a single wiki article by ID"""
+        success, response = self.run_test(
+            f"Get Wiki Article by ID: {article_id}",
+            "GET",
+            f"wiki/articles/{article_id}",
+            200,
+            expected_fields=["id", "title", "content", "category", "author"]
+        )
+        return success, response
+
+    def test_update_wiki_article(self, article_id, update_data):
+        """Test updating a wiki article"""
+        success, response = self.run_test(
+            f"Update Wiki Article: {article_id}",
+            "PUT",
+            f"wiki/articles/{article_id}",
+            200,
+            data=update_data,
+            expected_fields=["id", "title", "content", "updated_at"]
+        )
+        return success, response
+
+    def test_delete_wiki_article(self, article_id):
+        """Test deleting a wiki article"""
+        success, response = self.run_test(
+            f"Delete Wiki Article: {article_id}",
+            "DELETE",
+            f"wiki/articles/{article_id}",
+            200,
+            expected_fields=["message"]
+        )
+        return success, response
+
+    def test_get_wiki_categories(self):
+        """Test retrieving wiki categories"""
+        success, response = self.run_test(
+            "Get Wiki Categories",
+            "GET",
+            "wiki/categories",
+            200
+        )
+        return success, response
+
+    def test_wiki_article_not_found(self):
+        """Test getting non-existent wiki article"""
+        fake_id = "non-existent-id-12345"
+        success, response = self.run_test(
+            f"Get Non-existent Wiki Article",
+            "GET",
+            f"wiki/articles/{fake_id}",
+            404
+        )
+        return success
+
 def main():
     print("🚀 Starting DataMe API Tests")
     print("=" * 50)
@@ -240,6 +360,82 @@ def main():
     # Test Invalid Requests
     print(f"\n🧪 Testing Error Handling...")
     tester.test_invalid_requests()
+
+    # Test Wiki Article Management
+    print(f"\n🧪 Testing Wiki Article Management...")
+    
+    # Test creating wiki article
+    article_id = tester.test_create_wiki_article(
+        title=f"Test Wiki Article {timestamp}",
+        content="<h2>This is a test article</h2><p>This is some test content with <strong>bold text</strong> and <em>italic text</em>.</p>",
+        excerpt="This is a test excerpt for the wiki article.",
+        category="General",
+        tags=["test", "api", "wiki"],
+        author="Test Author",
+        read_time="5 min read",
+        featured_image_url="https://via.placeholder.com/800x400",
+        published=True
+    )
+    
+    if not article_id:
+        print("❌ Wiki article creation failed - stopping wiki tests")
+    else:
+        print(f"✅ Wiki article created with ID: {article_id}")
+        
+        # Test getting single article
+        success, article_data = tester.test_get_wiki_article_by_id(article_id)
+        if success:
+            print(f"✅ Successfully retrieved article by ID")
+        
+        # Test getting all published articles
+        success, articles_data = tester.test_get_wiki_articles(published_only=True)
+        if success and isinstance(articles_data, list):
+            print(f"✅ Retrieved {len(articles_data)} published articles")
+            # Check if our article is in the list
+            our_article = next((art for art in articles_data if art.get('id') == article_id), None)
+            if our_article:
+                print(f"✅ Our created article found in published articles list")
+            else:
+                print(f"⚠️  Warning: Our created article not found in published articles")
+        
+        # Test getting all articles (including drafts)
+        success, all_articles_data = tester.test_get_all_wiki_articles()
+        if success and isinstance(all_articles_data, list):
+            print(f"✅ Retrieved {len(all_articles_data)} total articles (including drafts)")
+        
+        # Test updating article
+        update_data = {
+            "title": f"Updated Test Article {timestamp}",
+            "excerpt": "Updated excerpt content",
+            "published": False  # Change to draft
+        }
+        success, updated_article = tester.test_update_wiki_article(article_id, update_data)
+        if success:
+            print(f"✅ Successfully updated article")
+            # Verify it's now unpublished
+            success, published_articles = tester.test_get_wiki_articles(published_only=True)
+            if success:
+                our_article_published = next((art for art in published_articles if art.get('id') == article_id), None)
+                if not our_article_published:
+                    print(f"✅ Article correctly unpublished - not in published articles")
+                else:
+                    print(f"⚠️  Warning: Article still appears in published articles after setting published=False")
+        
+        # Test getting categories
+        success, categories = tester.test_get_wiki_categories()
+        if success and isinstance(categories, list):
+            print(f"✅ Retrieved {len(categories)} wiki categories: {categories}")
+        
+        # Test deleting article
+        success, delete_response = tester.test_delete_wiki_article(article_id)
+        if success:
+            print(f"✅ Successfully deleted article")
+            # Verify it's actually deleted
+            tester.test_wiki_article_not_found()
+        
+    # Test wiki error scenarios
+    print(f"\n🧪 Testing Wiki Error Handling...")
+    tester.test_wiki_article_not_found()
 
     # Print final results
     print(f"\n📊 Final Test Results")

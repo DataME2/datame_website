@@ -10,6 +10,9 @@ import ServicesPage from "@/pages/ServicesPage";
 import InsightsPage from "@/pages/InsightsPage";
 import CaseStudiesPage from "@/pages/CaseStudiesPage";
 import CaseStudyDetailPage from "@/pages/CaseStudyDetailPage";
+import WikiPage from "@/pages/WikiPage";
+import WikiArticlePage from "@/pages/WikiArticlePage";
+import AdminWikiPage from "@/pages/AdminWikiPage";
 
 function App() {
   const [leadMagnetOpen, setLeadMagnetOpen] = useState(false);
@@ -27,6 +30,9 @@ function App() {
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/case-studies" element={<CaseStudiesPage />} />
             <Route path="/case-studies/:slug" element={<CaseStudyDetailPage />} />
+            <Route path="/wiki" element={<WikiPage />} />
+            <Route path="/wiki/:id" element={<WikiArticlePage />} />
+            <Route path="/admin/wiki" element={<AdminWikiPage />} />
           </Routes>
         </main>
         <Footer />

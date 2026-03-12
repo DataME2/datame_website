@@ -13,6 +13,7 @@ const navLinks = [
   { label: "Strategy", path: "/services" },
   { label: "Case Studies", path: "/case-studies" },
   { label: "Insights", path: "/insights" },
+  { label: "Wiki", path: "/wiki" },
 ];
 
 const serviceLinks = [

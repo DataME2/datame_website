@@ -103,3 +103,37 @@
     font-weight: 700;
     letter-spacing: -0.02em;
 }
+
+/* Quill Editor Overrides */
+.wiki-editor .ql-toolbar {
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #f8fafc;
+    padding: 10px 12px !important;
+}
+
+.wiki-editor .ql-container {
+    border: none !important;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    min-height: 400px;
+}
+
+.wiki-editor .ql-editor {
+    min-height: 400px;
+    padding: 20px 24px;
+    line-height: 1.7;
+}
+
+.wiki-editor .ql-editor.ql-blank::before {
+    color: #94a3b8;
+    font-style: normal;
+}
+
+/* Prose line-clamp utility */
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
