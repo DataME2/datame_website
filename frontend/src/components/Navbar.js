@@ -35,12 +35,11 @@ export default function Navbar({ onOpenLeadMagnet }) {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to="/" data-testid="nav-logo" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg brand-gradient-bg flex items-center justify-center">
-              <span className="text-white font-bold text-sm font-['Outfit']">D</span>
-            </div>
-            <span className="font-['Outfit'] font-semibold text-lg text-slate-900 tracking-tight">
-              Data<span className="text-[#ff6f28]">Me</span>
-            </span>
+            <img
+              src="https://customer-assets.emergentagent.com/job_migration-maestro-2/artifacts/l0hdnrlt_DataME_Logo.jpg"
+              alt="DataMe Logo"
+              className="h-10 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Nav */}

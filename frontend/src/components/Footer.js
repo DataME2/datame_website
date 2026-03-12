@@ -28,12 +28,11 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-4">
             <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 rounded-lg brand-gradient-bg flex items-center justify-center">
-                <span className="text-white font-bold text-sm font-['Outfit']">D</span>
-              </div>
-              <span className="font-['Outfit'] font-semibold text-lg tracking-tight">
-                Data<span className="text-[#ff6f28]">Me</span>
-              </span>
+              <img
+                src="https://customer-assets.emergentagent.com/job_migration-maestro-2/artifacts/l0hdnrlt_DataME_Logo.jpg"
+                alt="DataMe Logo"
+                className="h-10 w-auto object-contain"
+              />
             </div>
             <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
               Turning data infrastructure into a strategic business asset. 
