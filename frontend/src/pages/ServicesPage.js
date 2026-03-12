@@ -183,7 +183,7 @@ export default function ServicesPage({ onOpenLeadMagnet }) {
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           <div className="max-w-2xl">
             <Badge className="bg-slate-100 text-slate-700 border-0 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
-              Services
+              Strategy
             </Badge>
             <h1 className="font-['Outfit'] text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 mb-5">
               Architecture that serves your{" "}
@@ -284,7 +284,7 @@ export default function ServicesPage({ onOpenLeadMagnet }) {
       <section className="py-24 md:py-32">
         <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
           <h2 className="font-['Outfit'] text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900 mb-4">
-            Not sure which services you need?
+            Not sure which strategy you need?
           </h2>
           <p className="text-lg text-slate-600 max-w-xl mx-auto mb-8">
             Start with a free Data Strategy Maturity Assessment to understand where your organization stands.

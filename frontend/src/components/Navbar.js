@@ -10,7 +10,7 @@ import {
 
 const navLinks = [
   { label: "Home", path: "/" },
-  { label: "Services", path: "/services" },
+  { label: "Strategy", path: "/services" },
   { label: "Case Studies", path: "/case-studies" },
   { label: "Insights", path: "/insights" },
 ];
@@ -46,7 +46,7 @@ export default function Navbar({ onOpenLeadMagnet }) {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) =>
-              link.label === "Services" ? (
+              link.label === "Strategy" ? (
                 <DropdownMenu key={link.label}>
                   <DropdownMenuTrigger
                     data-testid="nav-services-dropdown"
@@ -56,12 +56,12 @@ export default function Navbar({ onOpenLeadMagnet }) {
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                   >
-                    Services <ChevronDown className="w-3.5 h-3.5" />
+                    Strategy <ChevronDown className="w-3.5 h-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48">
                     <DropdownMenuItem asChild>
                       <Link to="/services" data-testid="nav-services-all" className="cursor-pointer">
-                        All Services
+                        All Strategy
                       </Link>
                     </DropdownMenuItem>
                     {serviceLinks.map((sl) => (

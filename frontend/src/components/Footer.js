@@ -54,7 +54,7 @@ export default function Footer() {
 
           {/* Services */}
           <div className="md:col-span-3">
-            <h4 className="font-['Outfit'] font-semibold text-sm uppercase tracking-widest text-slate-500 mb-5">Services</h4>
+            <h4 className="font-['Outfit'] font-semibold text-sm uppercase tracking-widest text-slate-500 mb-5">Strategy</h4>
             <ul className="space-y-3">
               {footerLinks.services.map((link) => (
                 <li key={link.label}>

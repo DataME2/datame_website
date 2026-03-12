@@ -182,7 +182,7 @@ export default function HomePage({ onOpenLeadMagnet }) {
       <section data-testid="services-overview" className="py-24 md:py-32">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           <div className="max-w-2xl mb-16">
-            <p className="text-sm font-semibold uppercase tracking-widest text-[#ff6f28] mb-3">Services</p>
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#ff6f28] mb-3">Strategy</p>
             <h2 className="font-['Outfit'] text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-slate-900 mb-4">
               Two sides of data strategy
             </h2>
@@ -257,7 +257,7 @@ export default function HomePage({ onOpenLeadMagnet }) {
               data-testid="view-all-services-link"
               className="inline-flex items-center gap-2 text-[#ff6f28] font-semibold hover:gap-3 transition-all"
             >
-              Explore All Services <ArrowRight className="w-4 h-4" />
+              Explore All Strategy <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -368,7 +368,7 @@ export default function HomePage({ onOpenLeadMagnet }) {
               data-testid="contact-cta-services"
               className="bg-white border border-slate-200 text-slate-900 hover:bg-slate-50 hover:text-[#2274df] hover:border-[#2274df]/30 rounded-lg px-8 py-4 font-medium transition-all"
             >
-              Browse Services
+              Browse Strategy
             </Link>
           </div>
         </div>

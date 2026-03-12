@@ -374,7 +374,7 @@ export default function CaseStudyDetailPage() {
                     data-testid="case-study-services-cta"
                     className="bg-[#ff6f28] hover:bg-[#e65a15] text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hover:-translate-y-0.5 inline-flex items-center gap-2"
                   >
-                    Explore Services <ChevronRight className="w-4 h-4" />
+                    Explore Strategy <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
 
