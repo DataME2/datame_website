@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   Loader2,
   FileText,
+  Lock,
+  LogOut,
 } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -70,12 +72,37 @@ const emptyForm = {
 };
 
 export default function AdminWikiPage() {
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem("admin_auth") === "true");
+  const [password, setPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState("list"); // list | create | edit
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!password.trim()) return;
+    setAuthLoading(true);
+    try {
+      await axios.post(`${API}/admin/verify`, { password });
+      sessionStorage.setItem("admin_auth", "true");
+      setAuthenticated(true);
+      toast.success("Access granted.");
+    } catch (err) {
+      toast.error("Invalid password.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_auth");
+    setAuthenticated(false);
+    setPassword("");
+  };
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -89,8 +116,8 @@ export default function AdminWikiPage() {
   }, []);
 
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    if (authenticated) fetchArticles();
+  }, [fetchArticles, authenticated]);
 
   const handleCreate = () => {
     setForm({ ...emptyForm });
@@ -175,6 +202,42 @@ export default function AdminWikiPage() {
       toast.error("Failed to update article.");
     }
   };
+
+  if (!authenticated) {
+    return (
+      <div data-testid="admin-login-gate" className="pt-32 pb-24 flex items-center justify-center min-h-screen">
+        <div className="w-full max-w-sm mx-auto px-6">
+          <div className="bg-white border border-slate-100 rounded-xl p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mx-auto mb-5">
+              <Lock className="w-6 h-6 text-[#ff6f28]" />
+            </div>
+            <h2 className="font-['Outfit'] text-xl font-semibold text-slate-900 text-center tracking-tight mb-1">Admin Access</h2>
+            <p className="text-sm text-slate-500 text-center mb-6">Enter the admin password to continue.</p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <Input
+                data-testid="admin-password-input"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 bg-slate-50 border-slate-200 focus:border-[#ff6f28] focus:ring-[#ff6f28]/20"
+                autoFocus
+              />
+              <button
+                data-testid="admin-login-btn"
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-[#ff6f28] hover:bg-[#e65a15] text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hover:-translate-y-0.5 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {authLoading ? "Verifying..." : "Unlock"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (mode === "create" || mode === "edit") {
     return (
@@ -362,13 +425,23 @@ export default function AdminWikiPage() {
               Wiki Management
             </h1>
           </div>
-          <button
-            data-testid="admin-create-btn"
-            onClick={handleCreate}
-            className="bg-[#ff6f28] hover:bg-[#e65a15] text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2 self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" /> New Article
-          </button>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            <button
+              data-testid="admin-create-btn"
+              onClick={handleCreate}
+              className="bg-[#ff6f28] hover:bg-[#e65a15] text-white rounded-lg px-5 py-2.5 text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> New Article
+            </button>
+            <button
+              data-testid="admin-logout-btn"
+              onClick={handleLogout}
+              className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
         </div>
 
         <Separator className="mb-8" />

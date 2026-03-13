@@ -148,6 +148,19 @@ async def get_contacts():
     return contacts
 
 
+# Admin Auth
+class AdminVerify(BaseModel):
+    password: str
+
+@api_router.post("/admin/verify")
+async def verify_admin(input_data: AdminVerify):
+    admin_password = os.environ.get('ADMIN_PASSWORD')
+    if not admin_password or input_data.password != admin_password:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Invalid password")
+    return {"authenticated": True}
+
+
 # Wiki Article Routes
 @api_router.post("/wiki/articles", response_model=WikiArticle)
 async def create_wiki_article(input_data: WikiArticleCreate):
