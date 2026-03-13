@@ -1,89 +1,246 @@
-# DataManagementEngineer.com — AWS Amplify Deployment Guide
-
-This guide walks you through deploying the **DataMe** website (React frontend + FastAPI backend + MongoDB) on AWS Amplify with a supporting backend infrastructure.
+# DataManagementEngineer.com — AWS Deployment Guide
+## AWS Amplify (Frontend) + AWS App Runner (Backend) + MongoDB Atlas
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  AWS Amplify                     │
-│            (Frontend - React App)                │
-│         datamanagementengineer.com               │
-└──────────────────┬──────────────────────────────┘
-                   │ API calls
-                   ▼
-┌─────────────────────────────────────────────────┐
-│       AWS EC2 / ECS / App Runner / Lambda        │
-│           (Backend - FastAPI Server)             │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│          MongoDB Atlas (Cloud Database)           │
-│              OR self-hosted on EC2               │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│              AWS Amplify                      │
+│         (React Frontend - SPA)               │
+│      datamanagementengineer.com               │
+└─────────────────┬────────────────────────────┘
+                  │ HTTPS API calls
+                  ▼
+┌──────────────────────────────────────────────┐
+│            AWS App Runner                     │
+│         (FastAPI Backend)                    │
+│     api.datamanagementengineer.com            │
+└─────────────────┬────────────────────────────┘
+                  │
+                  ▼
+┌──────────────────────────────────────────────┐
+│           MongoDB Atlas (Free Tier)           │
+│           (Cloud Database)                   │
+└──────────────────────────────────────────────┘
 ```
-
-> **Important:** AWS Amplify natively hosts **static/SPA frontends**. The FastAPI backend must be deployed separately (EC2, ECS, App Runner, or Lambda). This guide covers both.
 
 ---
 
 ## Prerequisites
 
-- AWS Account with admin access
-- GitHub/GitLab/Bitbucket repo with your code
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) installed
-- [Node.js 18+](https://nodejs.org/) and Yarn installed locally
-- A MongoDB Atlas account (free tier works) — [https://www.mongodb.com/atlas](https://www.mongodb.com/atlas)
+| Tool | Link |
+|------|------|
+| AWS Account | [https://aws.amazon.com](https://aws.amazon.com) |
+| AWS CLI v2 | [Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) |
+| Docker Desktop | [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop) |
+| Git | Your code pushed to GitHub, GitLab, or Bitbucket |
+| MongoDB Atlas | [https://www.mongodb.com/atlas](https://www.mongodb.com/atlas) |
 
 ---
 
-## Part 1: Prepare Your Code for Deployment
+## Step 1: Set Up MongoDB Atlas (5 minutes)
 
-### 1.1 Project Structure
+### 1.1 Create a Free Cluster
 
-Ensure your repo has this structure:
+1. Go to [https://cloud.mongodb.com](https://cloud.mongodb.com) and sign up / log in
+2. Click **Build a Database** → Select **M0 FREE**
+3. Cloud Provider: **AWS**
+4. Region: **US East (N. Virginia)** `us-east-1` (or closest to your audience)
+5. Cluster Name: `datame-cluster`
+6. Click **Create Deployment**
+
+### 1.2 Create a Database User
+
+1. Go to **Database Access** (left sidebar)
+2. Click **Add New Database User**
+3. Authentication: **Password**
+4. Username: `datame_admin`
+5. Password: Click **Autogenerate Secure Password** → **Copy and save this password somewhere safe**
+6. Role: **Read and write to any database**
+7. Click **Add User**
+
+### 1.3 Allow Network Access
+
+1. Go to **Network Access** (left sidebar)
+2. Click **Add IP Address**
+3. Click **Allow Access from Anywhere** (`0.0.0.0/0`)
+   > You'll restrict this later after getting your App Runner IP
+4. Click **Confirm**
+
+### 1.4 Get Your Connection String
+
+1. Go to **Database** (left sidebar) → Click **Connect** on your cluster
+2. Select **Drivers**
+3. Copy the connection string:
+   ```
+   mongodb+srv://datame_admin:<password>@datame-cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
+   ```
+4. Replace `<password>` with your actual password
+5. Add database name before the `?`:
+   ```
+   mongodb+srv://datame_admin:YOUR_PASSWORD@datame-cluster.xxxxx.mongodb.net/datame_production?retryWrites=true&w=majority
+   ```
+
+**Save this full connection string — you'll need it in Step 2.**
+
+---
+
+## Step 2: Deploy Backend on AWS App Runner (15 minutes)
+
+### 2.1 Create `backend/Dockerfile`
+
+Add this file to your `backend/` folder:
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Remove .env from container — we use App Runner env vars instead
+RUN rm -f .env
+
+EXPOSE 8001
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
+```
+
+### 2.2 Create `backend/.dockerignore`
 
 ```
-/
-├── backend/
-│   ├── server.py
-│   ├── requirements.txt
-│   └── .env              ← DO NOT commit this (add to .gitignore)
-├── frontend/
-│   ├── package.json
-│   ├── src/
-│   ├── public/
-│   └── .env              ← DO NOT commit this
-└── README.md
-```
-
-### 1.2 Update Frontend Environment Variable
-
-In `frontend/.env`, the `REACT_APP_BACKEND_URL` must point to your **deployed backend URL** (you'll get this after deploying the backend):
-
-```
-REACT_APP_BACKEND_URL=https://api.datamanagementengineer.com
-```
-
-### 1.3 Add `.gitignore` Entries
-
-```gitignore
-# Environment files
-backend/.env
-frontend/.env
-
-# Dependencies
-node_modules/
-__pycache__/
+.env
+__pycache__
 *.pyc
+.git
 ```
 
-### 1.4 Create `frontend/amplify.yml` Build Spec
+### 2.3 Create an ECR Repository
 
-Create this file at the root of your repo (or configure in Amplify Console):
+Open your terminal:
+
+```bash
+# Configure AWS CLI (if not done already)
+aws configure
+# Enter: Access Key, Secret Key, Region (us-east-1), Output (json)
+
+# Create ECR repository
+aws ecr create-repository \
+  --repository-name datame-backend \
+  --region us-east-1
+```
+
+Note the `repositoryUri` from the output. It looks like:
+```
+123456789012.dkr.ecr.us-east-1.amazonaws.com/datame-backend
+```
+
+### 2.4 Build and Push Docker Image
+
+```bash
+# Set your account ID and region
+AWS_ACCOUNT_ID=123456789012
+AWS_REGION=us-east-1
+
+# Login to ECR
+aws ecr get-login-password --region $AWS_REGION | \
+  docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+# Build the image
+cd backend
+docker build --platform linux/amd64 -t datame-backend .
+
+# Tag it
+docker tag datame-backend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/datame-backend:latest
+
+# Push it
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/datame-backend:latest
+```
+
+### 2.5 Create App Runner Service
+
+1. Go to **AWS Console** → Search **App Runner** → Click **Create service**
+
+2. **Source and deployment**:
+   - Source: **Container registry** → **Amazon ECR**
+   - Browse and select: `datame-backend:latest`
+   - Deployment trigger: **Automatic** (redeploys when you push a new image)
+   - ECR access role: **Create new service role** (App Runner creates one for you)
+   - Click **Next**
+
+3. **Configure service**:
+   - Service name: `datame-backend`
+   - CPU: **1 vCPU**
+   - Memory: **2 GB**
+   - Port: **8001**
+
+4. **Environment variables** — Add these one by one:
+
+   | Key | Value |
+   |-----|-------|
+   | `MONGO_URL` | `mongodb+srv://datame_admin:YOUR_PASSWORD@datame-cluster.xxxxx.mongodb.net/datame_production?retryWrites=true&w=majority` |
+   | `DB_NAME` | `datame_production` |
+   | `CORS_ORIGINS` | `https://datamanagementengineer.com,https://www.datamanagementengineer.com` |
+   | `ADMIN_PASSWORD` | `Brisbane2026$` |
+
+5. **Health check**:
+   - Protocol: **HTTP**
+   - Path: `/api/`
+   - Click **Next**
+
+6. Review and click **Create & deploy**
+
+7. **Wait 3–5 minutes** for deployment to complete
+
+8. Copy your App Runner URL from the dashboard. It looks like:
+   ```
+   https://xxxxxxxx.us-east-1.awsapprunner.com
+   ```
+
+### 2.6 Test Your Backend
+
+Open a browser or run:
+
+```bash
+curl https://xxxxxxxx.us-east-1.awsapprunner.com/api/
+```
+
+Expected response:
+```json
+{"message": "DataMe API is running"}
+```
+
+Test the lead endpoint:
+```bash
+curl -X POST https://xxxxxxxx.us-east-1.awsapprunner.com/api/leads \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","email":"test@example.com","interest":"test"}'
+```
+
+### 2.7 (Optional) Add Custom Domain to App Runner
+
+1. In App Runner → Your service → **Custom domains**
+2. Click **Link domain**
+3. Enter: `api.datamanagementengineer.com`
+4. App Runner gives you DNS records — add them at your domain registrar:
+
+   | Type | Name | Value |
+   |------|------|-------|
+   | CNAME | `api` | (provided by App Runner) |
+   | CNAME | `_xxxxxxxxx.api` | (validation record) |
+
+5. Wait for **Active** status (usually 5–30 minutes)
+
+---
+
+## Step 3: Deploy Frontend on AWS Amplify (10 minutes)
+
+### 3.1 Create `amplify.yml` in Your Repo Root
 
 ```yaml
 version: 1
@@ -97,7 +254,7 @@ applications:
         build:
           commands:
             - cd frontend
-            - yarn build
+            - REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL yarn build
       artifacts:
         baseDirectory: frontend/build
         files:
@@ -108,347 +265,172 @@ applications:
     appRoot: /
 ```
 
----
+Commit and push this file to your repo.
 
-## Part 2: Set Up MongoDB Atlas
+### 3.2 Create Amplify App
 
-### 2.1 Create a Free Cluster
+1. Go to **AWS Console** → Search **Amplify** → Click **New app** → **Host web app**
+2. Select your Git provider (GitHub)
+3. Authorize and select your **repository** and **branch** (`main`)
+4. Amplify should detect `amplify.yml` automatically
+5. Click **Next**
 
-1. Go to [https://cloud.mongodb.com](https://cloud.mongodb.com)
-2. Create a free **M0 Shared Cluster**
-3. Choose **AWS** as the cloud provider and select a region close to your backend (e.g., `us-east-1`)
-4. Click **Create Cluster**
+### 3.3 Set Environment Variables
 
-### 2.2 Configure Access
-
-1. **Database Access** → Add a database user:
-   - Username: `datame_admin`
-   - Password: Generate a strong password — **save this**
-   - Role: `readWriteAnyDatabase`
-
-2. **Network Access** → Add IP addresses:
-   - For development: Add your current IP
-   - For production: Add your backend server's IP or `0.0.0.0/0` (allow all — restrict later)
-
-### 2.3 Get Connection String
-
-1. Click **Connect** on your cluster
-2. Choose **Connect your application**
-3. Copy the connection string. It looks like:
-
-```
-mongodb+srv://datame_admin:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
-```
-
-4. Replace `<password>` with your actual password
-5. Append your database name:
-
-```
-mongodb+srv://datame_admin:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/datame_production?retryWrites=true&w=majority
-```
-
----
-
-## Part 3: Deploy the Backend (FastAPI)
-
-You have several options. Here are the two most common:
-
-### Option A: AWS App Runner (Recommended — Simplest)
-
-AWS App Runner is the easiest way to deploy a containerized backend.
-
-#### 3A.1 Create a `Dockerfile` in `backend/`
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8001
-
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
-```
-
-#### 3A.2 Push to ECR (Elastic Container Registry)
-
-```bash
-# Authenticate Docker with ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
-
-# Create ECR repository
-aws ecr create-repository --repository-name datame-backend --region us-east-1
-
-# Build and push
-cd backend
-docker build -t datame-backend .
-docker tag datame-backend:latest YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/datame-backend:latest
-docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/datame-backend:latest
-```
-
-#### 3A.3 Create App Runner Service
-
-1. Go to **AWS App Runner** in the console
-2. **Source**: Choose **Container registry** → **Amazon ECR**
-3. Select your `datame-backend` image
-4. **Service settings**:
-   - Port: `8001`
-   - CPU: 1 vCPU, Memory: 2 GB (adjust as needed)
-5. **Environment variables** (add these):
-
-| Key | Value |
-|-----|-------|
-| `MONGO_URL` | `mongodb+srv://datame_admin:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/datame_production?retryWrites=true&w=majority` |
-| `DB_NAME` | `datame_production` |
-| `CORS_ORIGINS` | `https://datamanagementengineer.com,https://www.datamanagementengineer.com` |
-| `ADMIN_PASSWORD` | `Brisbane2026$` |
-
-6. Click **Create & Deploy**
-7. Note the App Runner URL (e.g., `https://xxxxxxxx.us-east-1.awsapprunner.com`)
-
-#### 3A.4 (Optional) Add Custom Domain
-
-1. In App Runner → your service → **Custom domains**
-2. Add `api.datamanagementengineer.com`
-3. Add the provided CNAME record to your DNS
-
----
-
-### Option B: AWS EC2 (More Control)
-
-#### 3B.1 Launch an EC2 Instance
-
-1. Go to **EC2** → **Launch Instance**
-2. Choose **Ubuntu 22.04 LTS**
-3. Instance type: `t3.small` (or `t3.micro` for low traffic)
-4. Security group: Allow inbound on ports **22** (SSH), **80**, **443**, **8001**
-5. Launch and SSH in
-
-#### 3B.2 Set Up the Server
-
-```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Python 3.11
-sudo apt install -y python3.11 python3.11-venv python3-pip nginx certbot python3-certbot-nginx
-
-# Clone your repo
-git clone https://github.com/YOUR_USER/YOUR_REPO.git
-cd YOUR_REPO/backend
-
-# Create virtual environment
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Create .env file
-cat > .env << 'EOF'
-MONGO_URL=mongodb+srv://datame_admin:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/datame_production?retryWrites=true&w=majority
-DB_NAME=datame_production
-CORS_ORIGINS=https://datamanagementengineer.com,https://www.datamanagementengineer.com
-ADMIN_PASSWORD=Brisbane2026$
-EOF
-```
-
-#### 3B.3 Create a Systemd Service
-
-```bash
-sudo tee /etc/systemd/system/datame-backend.service > /dev/null << 'EOF'
-[Unit]
-Description=DataMe FastAPI Backend
-After=network.target
-
-[Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/YOUR_REPO/backend
-Environment=PATH=/home/ubuntu/YOUR_REPO/backend/venv/bin
-ExecStart=/home/ubuntu/YOUR_REPO/backend/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable datame-backend
-sudo systemctl start datame-backend
-```
-
-#### 3B.4 Configure Nginx as Reverse Proxy
-
-```bash
-sudo tee /etc/nginx/sites-available/datame-api > /dev/null << 'EOF'
-server {
-    listen 80;
-    server_name api.datamanagementengineer.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:8001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-sudo ln -s /etc/nginx/sites-available/datame-api /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-#### 3B.5 Add SSL with Let's Encrypt
-
-```bash
-sudo certbot --nginx -d api.datamanagementengineer.com
-```
-
----
-
-## Part 4: Deploy the Frontend on AWS Amplify
-
-### 4.1 Connect Your Repository
-
-1. Go to **AWS Amplify** in the console
-2. Click **New app** → **Host web app**
-3. Choose your Git provider (GitHub, GitLab, Bitbucket)
-4. Authorize AWS Amplify and select your repository and branch (`main`)
-
-### 4.2 Configure Build Settings
-
-Amplify should auto-detect the `amplify.yml`. If not, set manually:
-
-- **App root**: `/` (or `/frontend` if monorepo detection fails)
-- **Build command**: `cd frontend && yarn install && yarn build`
-- **Output directory**: `frontend/build`
-
-### 4.3 Set Environment Variables
-
-In Amplify Console → **App settings** → **Environment variables**, add:
+On the **Build settings** page → **Advanced settings** → **Environment variables**:
 
 | Variable | Value |
 |----------|-------|
-| `REACT_APP_BACKEND_URL` | `https://api.datamanagementengineer.com` (your deployed backend URL) |
+| `REACT_APP_BACKEND_URL` | `https://api.datamanagementengineer.com` (or your App Runner URL if no custom domain yet) |
 
-> **Critical**: Amplify injects env vars at **build time** for React apps. After adding/changing variables, you must **redeploy**.
+> **Important:** React reads env vars at **build time** only. If you change this variable later, you must trigger a **new build**.
 
-### 4.4 Configure Redirects for SPA Routing
+### 3.4 Deploy
 
-React Router uses client-side routing. Add this redirect rule so all paths serve `index.html`:
+Click **Save and deploy**. Amplify will:
+1. Pull your code from Git
+2. Install dependencies (`yarn install`)
+3. Build the React app (`yarn build`)
+4. Deploy to Amplify's CDN
 
-Go to **App settings** → **Rewrites and redirects** → **Add rule**:
-
-| Source address | Target address | Type |
-|----------------|---------------|------|
-| `</^[^.]+$\|\.(?!(css\|gif\|ico\|jpg\|js\|png\|txt\|svg\|woff\|woff2\|ttf\|map\|json)$)([^.]+$)/>` | `/index.html` | `200 (Rewrite)` |
-
-This ensures routes like `/wiki`, `/case-studies/some-slug`, and `/admin/wiki` all work correctly.
-
-### 4.5 Deploy
-
-1. Click **Save and deploy**
-2. Amplify will pull code, build, and deploy
-3. You'll get a URL like `https://main.d1234abcd.amplifyapp.com`
-
-### 4.6 Add Custom Domain
-
-1. Go to **App settings** → **Domain management**
-2. Click **Add domain**
-3. Enter `datamanagementengineer.com`
-4. Amplify will provide DNS records to add:
-
-| Record | Host | Value |
-|--------|------|-------|
-| CNAME | `www` | `d1234abcd.cloudfront.net` |
-| ANAME/ALIAS | `@` (root) | `d1234abcd.cloudfront.net` |
-
-5. Add these records in your domain registrar (GoDaddy, Namecheap, Route 53, etc.)
-6. Amplify auto-provisions an **SSL certificate** — wait for verification (up to 48 hours, usually minutes)
-
----
-
-## Part 5: DNS Configuration Summary
-
-At your domain registrar, add these DNS records:
-
-| Type | Host | Value | Purpose |
-|------|------|-------|---------|
-| CNAME or ALIAS | `@` / root | Amplify CloudFront URL | Frontend |
-| CNAME | `www` | Amplify CloudFront URL | Frontend (www) |
-| CNAME | `api` | App Runner URL or EC2 IP | Backend API |
-
----
-
-## Part 6: Post-Deployment Checklist
-
-- [ ] **Frontend** loads at `https://datamanagementengineer.com`
-- [ ] **All pages** work (Home, Strategy, Case Studies, Insights, Wiki)
-- [ ] **API calls** work (lead form submission, wiki articles)
-- [ ] **Admin panel** is accessible at `/admin/wiki` and password-protected
-- [ ] **CORS** is configured correctly (no browser console errors)
-- [ ] **SSL** is active on both frontend and backend domains
-- [ ] **MongoDB Atlas** network access is restricted to your backend IP only
-- [ ] **Environment files** (`.env`) are NOT committed to the repository
-- [ ] **Custom domain** DNS propagation is complete
-
----
-
-## Part 7: CI/CD — Automatic Deployments
-
-### Frontend (Amplify)
-Amplify automatically redeploys when you push to your connected branch. No additional setup needed.
-
-### Backend
-For App Runner: Enable **automatic deployment** from ECR — push a new image and it redeploys.
-
-For EC2, add a simple deploy script:
-
-```bash
-#!/bin/bash
-cd /home/ubuntu/YOUR_REPO
-git pull origin main
-cd backend
-source venv/bin/activate
-pip install -r requirements.txt
-sudo systemctl restart datame-backend
+This takes about 3–5 minutes. You'll get a URL like:
 ```
+https://main.d1a2b3c4d5.amplifyapp.com
+```
+
+### 3.5 Add SPA Redirect Rule (Critical)
+
+React Router needs all paths to serve `index.html`:
+
+1. Go to **App settings** → **Rewrites and redirects**
+2. Click **Add rule** → Switch to **Open text editor** and paste:
+
+```json
+[
+  {
+    "source": "</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>",
+    "target": "/index.html",
+    "status": "200",
+    "condition": null
+  }
+]
+```
+
+3. Click **Save**
+
+Without this, visiting `/wiki` or `/case-studies/some-slug` directly will return a 404.
+
+### 3.6 Add Custom Domain
+
+1. Go to **App settings** → **Domain management** → **Add domain**
+2. Enter: `datamanagementengineer.com`
+3. Amplify shows subdomains to configure:
+   - `datamanagementengineer.com` → branch `main`
+   - `www.datamanagementengineer.com` → redirect to root
+4. Click **Configure domain**
+5. Amplify provides DNS records:
+
+   | Type | Name | Value |
+   |------|------|-------|
+   | CNAME | `_xxxxxxxxx` | `_xxxxxxxxx.xxxxxxxxx.acm-validations.aws` |
+   | ANAME/ALIAS | `@` (root) | `d1a2b3c4d5.cloudfront.net` |
+   | CNAME | `www` | `d1a2b3c4d5.cloudfront.net` |
+
+6. Add these DNS records at your domain registrar
+7. Amplify auto-provisions **free SSL** — verification takes 5 minutes to 48 hours
+
+---
+
+## Step 4: DNS Summary
+
+Add these records at your domain registrar (GoDaddy, Namecheap, Route 53, etc.):
+
+| Type | Name | Points To | Purpose |
+|------|------|-----------|---------|
+| ALIAS/ANAME | `@` (root) | Amplify CloudFront URL | Frontend |
+| CNAME | `www` | Amplify CloudFront URL | Frontend (www) |
+| CNAME | `api` | App Runner URL | Backend API |
+| CNAME | `_validation` | ACM validation value | SSL certificate |
+
+> **Note:** If your registrar doesn't support ALIAS/ANAME records for root domain, use **AWS Route 53** as your DNS provider (supports ALIAS records natively).
+
+---
+
+## Step 5: Post-Deployment Verification
+
+Open each URL and verify:
+
+| Check | URL | Expected |
+|-------|-----|----------|
+| Homepage | `https://datamanagementengineer.com` | Hero section loads |
+| Strategy page | `https://datamanagementengineer.com/services` | Offense/Defense tabs work |
+| Wiki | `https://datamanagementengineer.com/wiki` | Wiki page loads |
+| Admin | `https://datamanagementengineer.com/admin/wiki` | Password gate shows |
+| API health | `https://api.datamanagementengineer.com/api/` | JSON response |
+| Lead form | Submit the "Free Assessment" form | Toast success, data in MongoDB |
+| Direct URL | Refresh on `/case-studies/databricks-unity-catalog-poc` | Page loads (not 404) |
+
+---
+
+## Updating Your Site
+
+### Frontend Changes
+```bash
+git add .
+git commit -m "Update frontend"
+git push origin main
+```
+Amplify auto-detects the push and redeploys (~3 min).
+
+### Backend Changes
+```bash
+cd backend
+docker build --platform linux/amd64 -t datame-backend .
+docker tag datame-backend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/datame-backend:latest
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/datame-backend:latest
+```
+App Runner auto-detects the new image and redeploys (~3 min).
+
+### Adding Environment Variables
+- **Frontend**: Amplify Console → Environment variables → Add → **Redeploy**
+- **Backend**: App Runner → Configuration → Environment variables → **Deploy**
+
+---
+
+## Cost Breakdown
+
+| Service | What You Get | Monthly Cost |
+|---------|-------------|-------------|
+| **Amplify** | 1000 build min, 15 GB served, SSL | **Free** (free tier) |
+| **App Runner** | 1 vCPU, 2 GB, auto-scaling | **~$30** (pauses to $0 when idle if configured) |
+| **MongoDB Atlas M0** | 512 MB storage, shared cluster | **Free** |
+| **ECR** | Image storage | **~$1** |
+| **Route 53** (optional) | DNS hosting | **$0.50** |
+| **Total** | | **$0.50 – $31.50/month** |
+
+> **Tip:** App Runner supports **provisioned concurrency = 0** which means it pauses when idle and only charges for active use. Great for low-traffic sites.
 
 ---
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Frontend API calls fail | Check `REACT_APP_BACKEND_URL` in Amplify env vars. Must include `https://`. Redeploy after changing. |
-| CORS errors in browser | Ensure `CORS_ORIGINS` in backend `.env` includes your exact frontend domain(s). |
-| Routes return 404 on refresh | Add the SPA rewrite rule in Amplify (see Section 4.4). |
-| MongoDB connection timeout | Check MongoDB Atlas Network Access — add your backend's IP address. |
-| Admin login fails | Verify `ADMIN_PASSWORD` env var is set correctly on the backend server. |
-| Build fails on Amplify | Check build logs. Common: missing `yarn.lock`, wrong Node version. Set Node 18 in build settings. |
+| Problem | Fix |
+|---------|-----|
+| API calls fail from frontend | Verify `REACT_APP_BACKEND_URL` in Amplify env vars matches your backend URL exactly (with `https://`). Redeploy after changing. |
+| CORS error in browser console | Update `CORS_ORIGINS` in App Runner env vars to include your exact frontend domain. |
+| Pages 404 on browser refresh | Add the SPA rewrite rule (Step 3.5). |
+| MongoDB connection timeout | Check Atlas Network Access — ensure App Runner's outbound IPs are allowed (or use `0.0.0.0/0`). |
+| Docker build fails on M1/M2 Mac | Use `--platform linux/amd64` flag in `docker build`. |
+| Amplify build fails | Check build logs. Common issues: missing `yarn.lock` file, wrong Node version. Add `nvm use 18` to preBuild commands. |
+| Admin password not working | Verify `ADMIN_PASSWORD` env var in App Runner. Redeploy after changing. |
 
 ---
 
-## Cost Estimate (Monthly)
+## Security Checklist
 
-| Service | Tier | Estimated Cost |
-|---------|------|---------------|
-| AWS Amplify (Frontend) | Free tier: 1000 build mins, 15 GB served | **$0** (under free tier) |
-| AWS App Runner (Backend) | 1 vCPU, 2 GB | **~$30/month** |
-| *OR* AWS EC2 `t3.micro` | Free tier eligible (1st year) | **$0 – $8/month** |
-| MongoDB Atlas | M0 Free (512 MB) | **$0** |
-| Route 53 (DNS) | Hosted zone | **$0.50/month** |
-| **Total** | | **$0.50 – $30/month** |
-
----
-
-## Security Reminders
-
-1. **Never commit `.env` files** to your repository
-2. **Restrict MongoDB Atlas** network access to your backend IP only (remove `0.0.0.0/0` after setup)
-3. **Change the admin password** periodically
-4. **Enable AWS CloudWatch** logging for App Runner / EC2
-5. Consider adding **rate limiting** to the backend API for production use
+- [ ] `.env` files are in `.gitignore` — never committed
+- [ ] MongoDB Atlas network access restricted to App Runner IPs (not `0.0.0.0/0`)
+- [ ] Admin password is strong and stored only in App Runner env vars
+- [ ] CORS origins list only your actual domains
+- [ ] SSL active on both `datamanagementengineer.com` and `api.datamanagementengineer.com`
+- [ ] ECR repository has image scanning enabled
