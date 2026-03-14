@@ -13,6 +13,7 @@ import CaseStudyDetailPage from "@/pages/CaseStudyDetailPage";
 import WikiPage from "@/pages/WikiPage";
 import WikiArticlePage from "@/pages/WikiArticlePage";
 import AdminWikiPage from "@/pages/AdminWikiPage";
+import AboutPage from "@/pages/AboutPage";
 
 function App() {
   const [leadMagnetOpen, setLeadMagnetOpen] = useState(false);
@@ -33,6 +34,7 @@ function App() {
             <Route path="/wiki" element={<WikiPage />} />
             <Route path="/wiki/:id" element={<WikiArticlePage />} />
             <Route path="/admin/wiki" element={<AdminWikiPage />} />
+            <Route path="/about" element={<AboutPage onOpenLeadMagnet={openLeadMagnet} />} />
           </Routes>
         </main>
         <Footer />
